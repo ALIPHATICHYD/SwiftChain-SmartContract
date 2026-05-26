@@ -60,6 +60,37 @@ impl IdentityReputationContract {
             .unwrap_or_else(|| panic_with_error!(&env, SwiftChainError::ProviderNotFound));
         profile
     }
+
+    pub fn update_driver_kyc_status(env: Env, admin: Address, driver: Address, kyc_verified: bool) {
+        admin.require_auth();
+
+        let stored_admin: Address = env
+            .storage()
+            .instance()
+            .get(&DataKey::Admin)
+            .unwrap_or_else(|| panic_with_error!(&env, SwiftChainError::NotInitialized));
+
+        if admin != stored_admin {
+            panic_with_error!(&env, SwiftChainError::Unauthorized);
+        }
+
+        let key = DataKey::DriverProfile(driver.clone());
+        let mut profile: DriverProfile = env
+            .storage()
+            .persistent()
+            .get(&key)
+            .unwrap_or_else(|| panic_with_error!(&env, SwiftChainError::ProviderNotFound));
+
+        profile.kyc_verified = kyc_verified;
+
+        env.storage().persistent().set(&key, &profile);
+        env.storage().persistent().extend_ttl(&key, 518400, 518400);
+
+        env.events().publish(
+            (Symbol::new(&env, "kyc_status_updated"),),
+            (driver, kyc_verified),
+        );
+    }
 }
 
 #[cfg(test)]
