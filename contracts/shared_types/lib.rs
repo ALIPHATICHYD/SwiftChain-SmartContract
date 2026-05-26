@@ -195,8 +195,9 @@ pub struct EscrowRecord {
 #[cfg(test)]
 mod test {
     use super::{
-        DeliveryConfirmedEvent, DeliveryCreatedEvent, DeliveryDisputedEvent, DriverAssignedEvent,
-        EscrowFundedEvent, EscrowRefundedEvent, EscrowReleasedEvent, SwiftChainError, CargoDescriptor, CargoCategory, DeliveryMetadata,
+        CargoCategory, CargoDescriptor, DeliveryConfirmedEvent, DeliveryCreatedEvent,
+        DeliveryDisputedEvent, DeliveryMetadata, DriverAssignedEvent, EscrowFundedEvent,
+        EscrowRefundedEvent, EscrowReleasedEvent, SwiftChainError,
     };
     use soroban_sdk::{testutils::Address as _, Address, Env, String};
 
@@ -403,6 +404,13 @@ pub struct DriverProfile {
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
+pub struct UserProfile {
+    pub address: Address,
+    pub registered_at: u64,
+}
+
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CargoCategory {
     Documents,
     Electronics,
@@ -429,5 +437,3 @@ pub struct DeliveryMetadata {
     pub created_at: u64,
     pub estimated_delivery: u64,
 }
-
-
