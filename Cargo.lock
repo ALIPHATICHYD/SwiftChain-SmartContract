@@ -467,6 +467,9 @@ dependencies = [
 name = "dispute_resolution_contract"
 version = "0.1.0"
 dependencies = [
+ "delivery_contract",
+ "escrow_contract",
+ "shared_types",
  "soroban-sdk",
 ]
 
