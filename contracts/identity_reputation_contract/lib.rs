@@ -86,21 +86,16 @@ impl IdentityReputationContract {
         profile
     }
 
-    pub fn increase_reputation(
-        env: Env,
-        caller: Address,
-        driver: Address,
-        _delivery_id: u64,
-        weight_grams: u32,
-        fragile: bool,
-    ) {
-        caller.require_auth();
+    pub fn update_driver_kyc_status(env: Env, admin: Address, driver: Address, kyc_verified: bool) {
+        admin.require_auth();
 
-        let stored_admin = Self::get_admin(env.clone());
-        let is_admin = caller == stored_admin;
-        let is_auth_contract = Self::is_authorized_contract(env.clone(), caller.clone());
+        let stored_admin: Address = env
+            .storage()
+            .instance()
+            .get(&DataKey::Admin)
+            .unwrap_or_else(|| panic_with_error!(&env, SwiftChainError::NotInitialized));
 
-        if !is_admin && !is_auth_contract {
+        if admin != stored_admin {
             panic_with_error!(&env, SwiftChainError::Unauthorized);
         }
 
@@ -111,26 +106,14 @@ impl IdentityReputationContract {
             .get(&key)
             .unwrap_or_else(|| panic_with_error!(&env, SwiftChainError::ProviderNotFound));
 
-        let mut points_to_add = 5u32;
-        if weight_grams > 5000 {
-            points_to_add += 3;
-        }
-        if fragile {
-            points_to_add += 2;
-        }
-
-        profile.deliveries_completed += 1;
-        profile.reputation_score = profile.reputation_score.saturating_add(points_to_add);
-        if profile.reputation_score > 100 {
-            profile.reputation_score = 100;
-        }
+        profile.kyc_verified = kyc_verified;
 
         env.storage().persistent().set(&key, &profile);
         env.storage().persistent().extend_ttl(&key, 518400, 518400);
 
         env.events().publish(
-            (Symbol::new(&env, "reputation_increased"),),
-            (driver, profile.reputation_score),
+            (Symbol::new(&env, "kyc_status_updated"),),
+            (driver, kyc_verified),
         );
     }
 }
