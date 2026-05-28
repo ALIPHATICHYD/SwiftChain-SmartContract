@@ -174,7 +174,7 @@ impl DeliveryContract {
         let _: () = env.invoke_contract(
             &escrow_address,
             &soroban_sdk::Symbol::new(&env, "refund_escrow"),
-            soroban_sdk::vec![&env, delivery_id.into_val(&env)],
+            soroban_sdk::vec![&env, sender.into_val(&env), delivery_id.into_val(&env)],
         );
 
         delivery.status = DeliveryStatus::Cancelled;
@@ -280,7 +280,7 @@ impl DeliveryContract {
         let _: () = env.invoke_contract(
             &escrow_address,
             &soroban_sdk::Symbol::new(&env, "release_escrow"),
-            soroban_sdk::vec![&env, delivery_id.into_val(&env)],
+            soroban_sdk::vec![&env, recipient.into_val(&env), delivery_id.into_val(&env)],
         );
 
         delivery.status = DeliveryStatus::Delivered;
@@ -352,7 +352,7 @@ impl DeliveryContract {
         let _: () = env.invoke_contract(
             &escrow_address,
             &Symbol::new(&env, "raise_dispute"),
-            soroban_sdk::vec![&env, delivery_id.into_val(&env)],
+            soroban_sdk::vec![&env, caller.into_val(&env), delivery_id.into_val(&env)],
         );
 
         let timestamp = env.ledger().timestamp();
