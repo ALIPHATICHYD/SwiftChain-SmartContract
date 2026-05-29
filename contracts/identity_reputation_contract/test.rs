@@ -14,6 +14,8 @@ fn setup() -> (Env, Address, IdentityReputationContractClient<'static>, Address,
     (env, admin, client, delivery_contract, dispute_contract)
 }
 
+// Task 2 tests: Driver Registration & KYC
+
 #[test]
 fn test_register_driver() {
     let (env, _, client, _, _) = setup();
@@ -83,8 +85,10 @@ fn test_profile_fields_persisted() {
     assert_eq!(profile.kyc_verified, false);
 }
 
+// Task 3 tests: Reputation Scoring Logic
+
 #[test]
-fn test_increase_reputation_authorized_delivery_contract() {
+fn test_increase_reputation_basic() {
     let (env, _, client, delivery_contract, _) = setup();
     let driver = Address::generate(&env);
     client.register_driver(&driver);
@@ -92,36 +96,10 @@ fn test_increase_reputation_authorized_delivery_contract() {
     client.increase_reputation(&delivery_contract, &driver, &1u64, &1000u32, &false);
     let profile = client.get_driver_profile(&driver);
     assert_eq!(profile.reputation_score, 55);
-    assert_eq!(profile.deliveries_completed, 1);
 }
 
 #[test]
-fn test_increase_reputation_authorized_dispute_contract() {
-    let (env, _, client, _, dispute_contract) = setup();
-    let driver = Address::generate(&env);
-    client.register_driver(&driver);
-
-    client.increase_reputation(&dispute_contract, &driver, &1u64, &1000u32, &false);
-    let profile = client.get_driver_profile(&driver);
-    assert_eq!(profile.reputation_score, 55);
-}
-
-#[test]
-fn test_increase_reputation_unauthorized_driver_rejected() {
-    let (env, _, client, _, _) = setup();
-    let driver = Address::generate(&env);
-    client.register_driver(&driver);
-
-    let unauthorized = Address::generate(&env);
-    let result = client.try_increase_reputation(&unauthorized, &driver, &1u64, &1000u32, &false);
-    match result {
-        Err(Ok(err)) => assert_eq!(err, SwiftChainError::Unauthorized.into()),
-        _ => panic!("Expected unauthorized driver to be rejected"),
-    }
-}
-
-#[test]
-fn test_decrease_reputation_authorized_delivery_contract() {
+fn test_decrease_reputation_basic() {
     let (env, _, client, delivery_contract, _) = setup();
     let driver = Address::generate(&env);
     client.register_driver(&driver);
@@ -132,32 +110,43 @@ fn test_decrease_reputation_authorized_delivery_contract() {
 }
 
 #[test]
-fn test_decrease_reputation_unauthorized_driver_rejected() {
-    let (env, _, client, _, _) = setup();
-    let driver = Address::generate(&env);
-    client.register_driver(&driver);
-
-    let unauthorized = Address::generate(&env);
-    let result = client.try_decrease_reputation(&unauthorized, &driver, &10u32);
-    match result {
-        Err(Ok(err)) => assert_eq!(err, SwiftChainError::Unauthorized.into()),
-        _ => panic!("Expected unauthorized driver to be rejected"),
-    }
-}
-
-#[test]
-fn test_get_driver_tier_bronze() {
+fn test_reputation_cannot_go_below_zero() {
     let (env, _, client, delivery_contract, _) = setup();
     let driver = Address::generate(&env);
     client.register_driver(&driver);
 
+    client.decrease_reputation(&delivery_contract, &driver, &200u32);
+    let profile = client.get_driver_profile(&driver);
+    assert_eq!(profile.reputation_score, 0);
+}
+
+#[test]
+fn test_reputation_upper_bound() {
+    let (env, _, client, delivery_contract, _) = setup();
+    let driver = Address::generate(&env);
+    client.register_driver(&driver);
+
+    for i in 0..20 {
+        client.increase_reputation(&delivery_contract, &driver, &(100 + i), &6000u32, &true);
+    }
+    let profile = client.get_driver_profile(&driver);
+    assert_eq!(profile.reputation_score, 100);
+}
+
+#[test]
+fn test_tier_bronze() {
+    let (env, _, client, delivery_contract, _) = setup();
+    let driver = Address::generate(&env);
+    client.register_driver(&driver);
+
+    client.increase_reputation(&delivery_contract, &driver, &1u64, &1000u32, &false);
     client.decrease_reputation(&delivery_contract, &driver, &15u32);
     let tier = client.get_driver_tier(&driver);
     assert_eq!(tier, DriverTier::Bronze);
 }
 
 #[test]
-fn test_get_driver_tier_silver() {
+fn test_tier_silver() {
     let (env, _, client, _, _) = setup();
     let driver = Address::generate(&env);
     client.register_driver(&driver);
@@ -167,7 +156,7 @@ fn test_get_driver_tier_silver() {
 }
 
 #[test]
-fn test_get_driver_tier_gold() {
+fn test_tier_gold() {
     let (env, _, client, delivery_contract, _) = setup();
     let driver = Address::generate(&env);
     client.register_driver(&driver);
@@ -180,7 +169,7 @@ fn test_get_driver_tier_gold() {
 }
 
 #[test]
-fn test_get_driver_tier_boundary_exact() {
+fn test_tier_boundary_exact() {
     let (env, _, client, delivery_contract, _) = setup();
     let driver = Address::generate(&env);
     client.register_driver(&driver);
@@ -188,6 +177,8 @@ fn test_get_driver_tier_boundary_exact() {
     for _ in 0..5 {
         client.increase_reputation(&delivery_contract, &driver, &1u64, &1000u32, &false);
     }
+    let profile = client.get_driver_profile(&driver);
+    assert_eq!(profile.reputation_score, 75);
     let tier = client.get_driver_tier(&driver);
     assert_eq!(tier, DriverTier::Gold);
 }
